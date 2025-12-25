@@ -2016,21 +2016,46 @@ async def login(page):
 
 
 async def get_browser_path():
-    if getattr(sys, 'frozen', False):
-        # exe 패키징된 경우 _MEIPASS 경로 사용
-        playwright_path = os.path.join(sys._MEIPASS, 'playwright')
-        chromium_path = os.path.join(
-            playwright_path, 'chromium-1148', 'chrome-win', 'chrome.exe')
+    """
+    ini 파일에서 로컬 Chrome 브라우저 경로를 읽어 반환합니다.
+    브라우저가 없으면 프로그램을 종료합니다.
+    """
+    global configInfo
 
-        # 디버깅용 경로 출력
-        print(f"Playwright path: {playwright_path}")
-        print(f"Chromium path: {chromium_path}")
+    try:
+        # ini 파일에서 브라우저 경로 읽기
+        chrome_path = configInfo.config.get('BROWSER', 'chrome_path', fallback=None)
 
-        if os.path.exists(chromium_path):
-            return chromium_path
-        else:
-            print(f"Browser not found at: {chromium_path}")
-    return None
+        if not chrome_path:
+            msg = (
+                f"[BROWSER] 섹션의 chrome_path 설정이 ini 파일에 없습니다.\n"
+                f"ini 파일에 다음과 같이 브라우저 경로를 설정하세요:\n"
+                f"[BROWSER]\n"
+                f"chrome_path = C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"
+            )
+            print(msg)
+            await writelog(msg, telegram=False)
+            sys.exit(1)
+
+        # 브라우저 파일 존재 여부 확인
+        if not os.path.exists(chrome_path):
+            msg = (
+                f"설정된 브라우저를 찾을 수 없습니다: {chrome_path}\n"
+                f"ini 파일의 [BROWSER] chrome_path 설정을 확인하세요.\n"
+                f"현재 설정: chrome_path = {chrome_path}"
+            )
+            print(msg)
+            await writelog(msg, telegram=False)
+            sys.exit(1)
+
+        print(f"브라우저 경로: {chrome_path}")
+        return chrome_path
+
+    except Exception as e:
+        msg = f"브라우저 경로 읽기 실패: {str(e)}"
+        print(msg)
+        await writelog(msg, telegram=False)
+        sys.exit(1)
 
 
 async def run(playwright):
