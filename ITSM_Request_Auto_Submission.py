@@ -265,7 +265,7 @@ class ConfigInfo:
             msg = f'{scriptInfo.script_name}.ini 파일을 찾을 수 없습니다.\n' \
                 f'실행파일과 같은 폴더에 {
                 scriptInfo.script_name}.ini 파일을 복사한 후 다시 실행하세요.'
-            asyncio.create_task(writelog(msg, telegram=False))
+            asyncio.create_task(writelog(msg))
             raise FileNotFoundError(msg)
 
     async def change_config_file(self):
@@ -449,7 +449,7 @@ class ImportFileInfo:
                 return pickle.loads(data)
         except FileNotFoundError:
             msg = f'{self.pickleFile} 파일이 없습니다.'
-            asyncio.create_task(writelog(msg, telegram=False))
+            await writelog(msg)
             return dict()
 
     async def json_to_file(self, jsonData):
@@ -2005,7 +2005,8 @@ async def login(page):
                 error_message = await error_message_element.text_content()
             else:
                 error_message = '알 수 없음'
-            await writelog(f"로그인 실패 : {error_message}")
+            msg = f"로그인 실패 : {error_message}"
+            await asyncio.gather(writelog(msg), write_notice(msg))
             return False
     except TimeoutError:
         # 에러 메시지가 없으면 로그인 성공으로 간주
@@ -2016,21 +2017,77 @@ async def login(page):
 
 
 async def get_browser_path():
-    if getattr(sys, 'frozen', False):
-        # exe 패키징된 경우 _MEIPASS 경로 사용
-        playwright_path = os.path.join(sys._MEIPASS, 'playwright')
-        chromium_path = os.path.join(
-            playwright_path, 'chromium-1148', 'chrome-win', 'chrome.exe')
+    """
+    ini 파일에서 브라우저 종류를 읽어 기본 설치 경로에서 브라우저를 찾아 반환합니다.
+    브라우저가 없으면 프로그램을 종료합니다.
+    """
+    global configInfo
 
-        # 디버깅용 경로 출력
-        print(f"Playwright path: {playwright_path}")
-        print(f"Chromium path: {chromium_path}")
+    # 브라우저별 기본 설치 경로 목록
+    browser_paths = {
+        'chrome': [
+            r'C:\Program Files\Google\Chrome\Application\chrome.exe',
+            r'C:\Program Files (x86)\Google\Chrome\Application\chrome.exe'
+        ],
+        'edge': [
+            r'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe',
+            r'C:\Program Files\Microsoft\Edge\Application\msedge.exe'
+        ],
+        'firefox': [
+            r'C:\Program Files\Mozilla Firefox\firefox.exe',
+            r'C:\Program Files (x86)\Mozilla Firefox\firefox.exe'
+        ]
+    }
 
-        if os.path.exists(chromium_path):
-            return chromium_path
-        else:
-            print(f"Browser not found at: {chromium_path}")
-    return None
+    try:
+        # ini 파일에서 브라우저 타입 읽기
+        browser_type = configInfo.config.get('BROWSER', 'browser_type', fallback=None)
+
+        if not browser_type:
+            msg = (
+                f"[BROWSER] 섹션의 browser_type 설정이 ini 파일에 없습니다.\n"
+                f"ini 파일에 다음과 같이 브라우저 종류를 설정하세요:\n"
+                f"[BROWSER]\n"
+                f"browser_type = chrome  (또는 edge, firefox)"
+            )
+            print(msg)
+            await writelog(msg)
+            sys.exit(1)
+
+        browser_type = browser_type.lower().strip()
+
+        # 지원하는 브라우저 타입인지 확인
+        if browser_type not in browser_paths:
+            msg = (
+                f"지원하지 않는 브라우저 타입입니다: {browser_type}\n"
+                f"지원 가능한 브라우저: {', '.join(browser_paths.keys())}\n"
+                f"ini 파일의 [BROWSER] browser_type 설정을 확인하세요."
+            )
+            print(msg)
+            await writelog(msg)
+            sys.exit(1)
+
+        # 기본 경로에서 브라우저 찾기
+        for path in browser_paths[browser_type]:
+            if os.path.exists(path):
+                print(f"브라우저 발견: {browser_type} - {path}")
+                return path
+
+        # 모든 경로에서 찾지 못한 경우
+        msg = (
+            f"{browser_type} 브라우저를 기본 설치 경로에서 찾을 수 없습니다.\n"
+            f"확인한 경로:\n" + "\n".join(f"  - {p}" for p in browser_paths[browser_type]) + "\n"
+            f"브라우저를 설치하거나 ini 파일의 browser_type 설정을 변경하세요."
+        )
+        print(msg)
+        await writelog(msg)
+        sys.exit(1)
+
+    except Exception as e:
+        msg = f"브라우저 경로 읽기 실패: {str(e)}"
+        print(msg)
+        await writelog(msg)
+        sys.exit(1)
 
 
 async def run(playwright):
@@ -2084,6 +2141,7 @@ async def run(playwright):
                 t.start()
                 # 명시적으로 브라우저 닫기
                 await browser.close()
+                await asyncio.gather(writelog(msg), write_notice(msg))
                 return
 
             # 자동접수
