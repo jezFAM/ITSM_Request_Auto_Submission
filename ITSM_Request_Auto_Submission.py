@@ -476,6 +476,14 @@ class SiteInfo:
 
 
 @dataclass(unsafe_hash=True, order=True)
+class NmsInfo:
+    ip: str = None
+    port: int = 53306
+    user: str = None
+    password: str = None
+
+
+@dataclass(unsafe_hash=True, order=True)
 class DataInfo:
     interval: int = 0
     failClassifcation: List[int] = field(default_factory=list)
@@ -509,7 +517,7 @@ async def getConfig():
     global scriptInfo, configInfo
     global dataInfo, network_prov_file, network_calendar_file
     global prov_info_file, classification_conditions_file, rest_info_file
-    global sftpInfo, itsmInfo
+    global sftpInfo, itsmInfo, nmsInfo
 
     # 현재 망 선택
     hostname = socket.gethostname()
@@ -537,9 +545,11 @@ async def getConfig():
     if (sel == 1):
         # 업무망
         sftpInfo.host_ip = configInfo.config['SERVER']['host_upmu']
+        nmsInfo.ip = configInfo.config['NMS']['nms_db_ip_upmu']
     elif (sel == 2):
         # 중요망
         sftpInfo.host_ip = configInfo.config['SERVER']['host_jongyo']
+        nmsInfo.ip = configInfo.config['NMS']['nms_db_ip_jungyo']
     elif (sel == 3):
         # 인터넷망
         time.sleep(1)
@@ -547,6 +557,7 @@ async def getConfig():
     elif (sel == 4):
         # 파일서버
         sftpInfo.host_ip = configInfo.config['SERVER']['host_jongyo']
+        nmsInfo.ip = configInfo.config['NMS']['nms_db_ip_jungyo']
 
     # FILE 정보
     network_prov_file.pickleFile = configInfo.config['FILE']['network_prov_file']
@@ -564,6 +575,11 @@ async def getConfig():
     itsmInfo.domain = configInfo.config['ITSM']['itsmURL']
     itsmInfo.id = configInfo.config['ITSM']['itsmID']
     itsmInfo.password = configInfo.config['ITSM']['itsmPWD']
+
+    # NMS 정보
+    nmsInfo.port = NMS_API.mysql_port
+    nmsInfo.user = NMS_API.userName
+    nmsInfo.password = NMS_API.password
 
     # DATA 정보
     dataInfo.interval = int(configInfo.config['DATA']['interval'])
@@ -971,20 +987,13 @@ def classify_request(content):
                     all_key_match = False
                     break
 
-                # NMS DB에서 IP의 memo 확인
-                hostname = socket.gethostname()
-                if hostname.find('UPMU') > -1 or hostname.find('업무') > -1 or hostname.find('NW229') > -1:
-                    nms_db_ip = NMS_API.db_ip_upmu
-                else:
-                    nms_db_ip = NMS_API.db_ip_jungyo
-
                 # 패턴 매칭 확인 (와일드카드 지원)
                 memo_matched = False
                 for ip in ip_addresses:
                     try:
                         # NMS DB에서 memo 조회
                         query = f"SELECT memo FROM kftc_nms_ip WHERE ipaddress = '{ip.strip()}' LIMIT 1"
-                        result = NMS_API.DB_Query(nms_db_ip, NMS_API.mysql_port, 'watchall', query, raw_data=True, isLogging=False)
+                        result = NMS_API.DB_Query(nmsInfo.ip, nmsInfo.port, 'watchall', query, raw_data=True, isLogging=False)
 
                         if result and result[0].get('memo'):
                             memo = result[0]['memo']
@@ -2260,6 +2269,7 @@ if __name__ == '__main__':
     rest_info_file = ImportFileInfo()
     sftpInfo = ShareInfo()
     itsmInfo = SiteInfo()
+    nmsInfo = NmsInfo()
 
     # 비동기 메인 함수 실행
     asyncio.run(main())
