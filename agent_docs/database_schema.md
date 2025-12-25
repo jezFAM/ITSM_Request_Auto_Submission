@@ -61,5 +61,15 @@
 * **Usage**: `iptable_memo` 조건 검사 시 IP 주소의 속성을 확인하기 위해 조회.
 * **Connection**: `NMS_API` 모듈 사용 (망별 IP/Port 설정).
 * **Target Table**: `kftc_nms_ip`
-  * `ipaddress`: 조회 조건 (WHERE 절).
-  * `memo`: 조회 대상. 패턴 매칭 수행.
+  | Field | Type | Null | Key | Default | Extra | Description |
+  | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+  | `seq_number` | `int(11)` | NO | PRI | NULL | auto_increment | Primary Key |
+  | `type_id` | `varchar(16)` | YES | MUL | NULL | | IP 유형 식별자 |
+  | `ipaddress` | `varchar(64)` | YES | MUL | NULL | | **[Query Condition]** 조회 대상 IP 주소 |
+  | `network_address` | `varchar(64)` | YES | | NULL | | 네트워크 주소 |
+  | `netmask` | `varchar(64)` | YES | | NULL | | 서브넷 마스크 |
+  | `assign_date` | `date` | YES | | NULL | | 할당 일자 |
+  | `manager_name` | `varchar(64)` | YES | | NULL | | 관리자명 |
+  | `memo` | `varchar(4000)` | YES | | NULL | | **[Target Data]** 분류 키워드 포함 여부 확인 대상 (예: `*VAN*`) |
+  | `alias` | `varchar(255)` | YES | | NULL | | 별칭 |
+  | `system_name` | `varchar(128)` | YES | | NULL | | 시스템명 |
