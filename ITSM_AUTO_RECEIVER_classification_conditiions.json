@@ -7,6 +7,15 @@
       "menu": ["일반", "LAN"]
     },
     {
+      "name": "수익사업 내부 도메인 관련 작업",
+      "keys": ["title"],
+      "table_keys": ["도메인명"],
+      "title": ["도메인등록", "도메인삭제"],
+      "도메인명": ["kftc.net"],
+      "menu": ["변경", "수익사업"],
+      "check_van_ip": true
+    },
+    {
       "name": "내부 도메인 관련 작업",
       "keys": ["title"],
       "table_keys": ["도메인명"],
@@ -15,10 +24,24 @@
       "menu": ["변경", "LAN"]
     },
     {
+      "name": "수익사업 도메인 관련 작업",
+      "keys": ["title"],
+      "title": ["도메인등록", "도메인삭제"],
+      "menu": ["변경", "수익사업"],
+      "check_van_ip": true
+    },
+    {
       "name": "도메인 관련 작업",
       "keys": ["title"],
       "title": ["도메인등록", "도메인삭제"],
       "menu": ["변경", "인터넷"]
+    },
+    {
+      "name": "수익사업 Loadbalancing 관련 작업",
+      "keys": ["title"],
+      "title": ["Load balancing", "Loadbalancing", "부하분산"],
+      "menu": ["변경", "수익사업"],
+      "check_van_ip": true
     },
     {
       "name": "Loadbalancing 관련 작업",
