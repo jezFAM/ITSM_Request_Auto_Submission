@@ -1004,8 +1004,11 @@ def classify_request(content):
             continue
 
         # 모든 조건을 만족함
-        # check_van_ip 플래그가 있는 경우 VAN IP 여부 확인
-        if condition.get("check_van_ip", False):
+        menu = condition["menu"]
+
+        # 특정 조건에 대해 VAN IP 체크 수행
+        van_check_conditions = ["내부 도메인 관련 작업", "도메인 관련 작업", "Loadbalancing 관련 작업"]
+        if condition["name"] in van_check_conditions:
             # table_data에서 IP 주소 추출
             ip_addresses = []
             if content.get('table_data'):
@@ -1026,28 +1029,17 @@ def classify_request(content):
                     nms_db_ip = NMS_API.db_ip_jungyo
 
                 # 각 IP에 대해 VAN 여부 확인
-                is_van = False
                 for ip in ip_addresses:
                     try:
                         if NMS_API.check_ip_is_van(nms_db_ip, NMS_API.mysql_port, ip, isLogging=True):
-                            is_van = True
+                            # VAN IP가 발견되면 menu를 ["변경", "수익사업"]으로 변경
+                            menu = ["변경", "수익사업"]
                             break
                     except Exception as e:
                         # 에러는 NMS_API.check_ip_is_van에서 기록됨
                         continue
 
-                # VAN IP가 발견되면 이 조건(수익사업) 반환
-                if is_van:
-                    return condition["name"], condition["menu"]
-                else:
-                    # VAN IP가 아니면 다음 조건으로 (일반 도메인/Loadbalancing 조건으로)
-                    continue
-            else:
-                # IP 주소가 없으면 다음 조건으로
-                continue
-
-        # check_van_ip 플래그가 없는 일반 조건
-        return condition["name"], condition["menu"]
+        return condition["name"], menu
 
     return None, None  # 어떤 조건도 만족하지 않는 경우
 
