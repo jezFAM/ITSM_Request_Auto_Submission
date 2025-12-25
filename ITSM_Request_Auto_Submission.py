@@ -265,7 +265,7 @@ class ConfigInfo:
             msg = f'{scriptInfo.script_name}.ini 파일을 찾을 수 없습니다.\n' \
                 f'실행파일과 같은 폴더에 {
                 scriptInfo.script_name}.ini 파일을 복사한 후 다시 실행하세요.'
-            asyncio.create_task(writelog(msg, telegram=False))
+            asyncio.create_task(writelog(msg)
             raise FileNotFoundError(msg)
 
     async def change_config_file(self):
@@ -449,7 +449,7 @@ class ImportFileInfo:
                 return pickle.loads(data)
         except FileNotFoundError:
             msg = f'{self.pickleFile} 파일이 없습니다.'
-            asyncio.create_task(writelog(msg, telegram=False))
+            await writelog(msg)
             return dict()
 
     async def json_to_file(self, jsonData):
@@ -2005,7 +2005,8 @@ async def login(page):
                 error_message = await error_message_element.text_content()
             else:
                 error_message = '알 수 없음'
-            await writelog(f"로그인 실패 : {error_message}")
+            msg = f"로그인 실패 : {error_message}"
+            await asyncio.gather(writelog(msg), write_notice(msg))
             return False
     except TimeoutError:
         # 에러 메시지가 없으면 로그인 성공으로 간주
@@ -2050,7 +2051,7 @@ async def get_browser_path():
                 f"browser_type = chrome  (또는 edge, firefox)"
             )
             print(msg)
-            await writelog(msg, telegram=False)
+            await writelog(msg)
             sys.exit(1)
 
         browser_type = browser_type.lower().strip()
@@ -2063,7 +2064,7 @@ async def get_browser_path():
                 f"ini 파일의 [BROWSER] browser_type 설정을 확인하세요."
             )
             print(msg)
-            await writelog(msg, telegram=False)
+            await writelog(msg)
             sys.exit(1)
 
         # 기본 경로에서 브라우저 찾기
@@ -2079,13 +2080,13 @@ async def get_browser_path():
             f"브라우저를 설치하거나 ini 파일의 browser_type 설정을 변경하세요."
         )
         print(msg)
-        await writelog(msg, telegram=False)
+        await writelog(msg)
         sys.exit(1)
 
     except Exception as e:
         msg = f"브라우저 경로 읽기 실패: {str(e)}"
         print(msg)
-        await writelog(msg, telegram=False)
+        await writelog(msg)
         sys.exit(1)
 
 
@@ -2140,6 +2141,7 @@ async def run(playwright):
                 t.start()
                 # 명시적으로 브라우저 닫기
                 await browser.close()
+                await asyncio.gather(writelog(msg), write_notice(msg))
                 return
 
             # 자동접수
