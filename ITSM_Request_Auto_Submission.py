@@ -956,7 +956,54 @@ def classify_request(content):
     for condition in dataInfo.classification_conditions['conditions']:
         all_key_match = True
         for key in condition.get('keys', []):
-            if key in condition and not any(keyword.lower() in content.get(key, '').lower() for keyword in condition[key]):
+            # iptable_memo는 NMS DB 조회가 필요한 특수 키
+            if key == 'iptable_memo':
+                # table_data에서 IP 주소 추출
+                ip_addresses = []
+                if content.get('table_data'):
+                    for row in content['table_data']:
+                        for field_key, value in row.items():
+                            if 'ip' in field_key.lower() and value and value.strip():
+                                ip_addresses.append(value.strip())
+
+                # IP가 없으면 불일치
+                if not ip_addresses:
+                    all_key_match = False
+                    break
+
+                # NMS DB에서 IP의 memo 확인
+                hostname = socket.gethostname()
+                if hostname.find('UPMU') > -1 or hostname.find('업무') > -1 or hostname.find('NW229') > -1:
+                    nms_db_ip = NMS_API.db_ip_upmu
+                else:
+                    nms_db_ip = NMS_API.db_ip_jungyo
+
+                # 패턴 매칭 확인 (와일드카드 지원)
+                memo_matched = False
+                for ip in ip_addresses:
+                    try:
+                        # NMS DB에서 memo 조회
+                        query = f"SELECT memo FROM kftc_nms_ip WHERE ipaddress = '{ip.strip()}' LIMIT 1"
+                        result = NMS_API.DB_Query(nms_db_ip, NMS_API.mysql_port, 'watchall', query, raw_data=True, isLogging=False)
+
+                        if result and result[0].get('memo'):
+                            memo = result[0]['memo']
+                            # 패턴 매칭 (*VAN* 같은 와일드카드 지원)
+                            for pattern in condition[key]:
+                                pattern_regex = pattern.replace('*', '.*')
+                                if re.search(pattern_regex, memo, re.IGNORECASE):
+                                    memo_matched = True
+                                    break
+
+                        if memo_matched:
+                            break
+                    except Exception as e:
+                        continue
+
+                if not memo_matched:
+                    all_key_match = False
+                    break
+            elif key in condition and not any(keyword.lower() in content.get(key, '').lower() for keyword in condition[key]):
                 all_key_match = False
                 break
         if not all_key_match:
@@ -1003,43 +1050,8 @@ def classify_request(content):
         if "and_keywords" in condition and not all(keyword.lower() in requestTermsStr for keyword in condition["and_keywords"]):
             continue
 
-        # 모든 조건을 만족함
-        menu = condition["menu"]
-
-        # 특정 조건에 대해 VAN IP 체크 수행
-        van_check_conditions = ["내부 도메인 관련 작업", "도메인 관련 작업", "Loadbalancing 관련 작업"]
-        if condition["name"] in van_check_conditions:
-            # table_data에서 IP 주소 추출
-            ip_addresses = []
-            if content.get('table_data'):
-                for row in content['table_data']:
-                    for key, value in row.items():
-                        # IP 관련 필드에서 IP 주소 추출
-                        if 'ip' in key.lower() and value and value.strip():
-                            ip_addresses.append(value.strip())
-
-            # 추출된 IP 주소들이 VAN IP인지 확인
-            if ip_addresses:
-                # 망에 따라 적절한 DB IP 선택
-                hostname = socket.gethostname()
-                if hostname.find('UPMU') > -1 or hostname.find('업무') > -1 or hostname.find('NW229') > -1:
-                    nms_db_ip = NMS_API.db_ip_upmu
-                else:
-                    # 중요망 또는 기타
-                    nms_db_ip = NMS_API.db_ip_jungyo
-
-                # 각 IP에 대해 VAN 여부 확인
-                for ip in ip_addresses:
-                    try:
-                        if NMS_API.check_ip_is_van(nms_db_ip, NMS_API.mysql_port, ip, isLogging=True):
-                            # VAN IP가 발견되면 menu를 ["변경", "수익사업"]으로 변경
-                            menu = ["변경", "수익사업"]
-                            break
-                    except Exception as e:
-                        # 에러는 NMS_API.check_ip_is_van에서 기록됨
-                        continue
-
-        return condition["name"], menu
+        # 모든 조건을 만족하면 해당 메뉴 반환
+        return condition["name"], condition["menu"]
 
     return None, None  # 어떤 조건도 만족하지 않는 경우
 
