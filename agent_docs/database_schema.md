@@ -1,6 +1,6 @@
 # Data Structure & Schema Documentation
 
-이 프로젝트는 RDBMS를 사용하지 않으며, **JSON 파일**과 **Pickle(Binary) 파일**을 통해 데이터와 설정을 관리합니다.
+이 프로젝트는 RDBMS(직접 저장용)를 사용하지 않으며, **JSON 파일**과 **Pickle(Binary) 파일**을 통해 데이터와 설정을 관리합니다. 단, 특정 분류 로직을 위해 **외부 NMS MySQL DB**를 참조합니다.
 
 ## 1. JSON Configuration Files
 
@@ -32,9 +32,10 @@
   | Field | Type | Description |
   | :--- | :--- | :--- |
   | `name` | String | 규칙 이름 (식별자) |
-  | `keys` | Array[Str] | 검사할 필드 (예: `title`, `relname`) |
+  | `keys` | Array[Str] | 검사할 필드 목록. 특수 키 `iptable_memo` 포함 가능. |
   | `table_keys` | Array[Str] | (Optional) 테이블 데이터 내 검사할 컬럼명 (예: `Real IP`, `도메인명`) |
   | `title` | Array[Str] | (Optional) 제목에 포함되어야 할 키워드 (OR 조건) |
+  | `iptable_memo` | Array[Str] | **[v1.1.8 New]** NMS DB 조회 키워드. IP 조회 후 Memo 필드에 해당 패턴(예: `*VAN*`) 포함 여부 확인. |
   | `include_keywords` | Array[Str] | (Optional) 반드시 포함되어야 할 키워드 (AND 조건) |
   | `exclude_keywords` | Array[Str] | (Optional) 포함되면 안 되는 키워드 |
   | `regex` | String | (Optional) 정규표현식 매칭 패턴 |
@@ -49,9 +50,16 @@
 
 ### 2.1 `network_prov_info.bin`
 * **Description**: SFTP를 통해 구글 시트 등 외부 소스와 동기화되는 직원/휴가 정보의 캐시 파일.
-* **Update Logic**: 로컬 `prov_info.json`보다 최신이고 날짜가 오늘인 경우 로컬 정보를 덮어씀.
 * **Fields**: `update` (Date String), `timeoff` (Vacation list), `provInfo` (Full Prov Info object), `nightworker` (List).
 
 ### 2.2 `network_calendar.bin`
 * **Description**: 네트워크 팀 캘린더/일정 정보.
-* **Usage**: 특정 날짜의 휴일 여부(`휴일`) 등을 확인하는 데 사용.
+
+## 3. External Data Sources
+
+### 3.1 NMS Database (MySQL)
+* **Usage**: `iptable_memo` 조건 검사 시 IP 주소의 속성을 확인하기 위해 조회.
+* **Connection**: `NMS_API` 모듈 사용 (망별 IP/Port 설정).
+* **Target Table**: `kftc_nms_ip`
+  * `ipaddress`: 조회 조건 (WHERE 절).
+  * `memo`: 조회 대상. 패턴 매칭 수행.
