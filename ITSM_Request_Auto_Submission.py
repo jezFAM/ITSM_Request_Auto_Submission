@@ -41,6 +41,9 @@ from ast import literal_eval
 from bs4 import BeautifulSoup as bs
 from urllib import parse
 
+# NMS API import for VAN IP checking
+import NMS_API
+
 # 한글깨짐 처리
 os.putenv('NLS_LANG', 'KOREAN_KOREA.KO16KSC5601')
 
@@ -1000,7 +1003,44 @@ def classify_request(content):
         if "and_keywords" in condition and not all(keyword.lower() in requestTermsStr for keyword in condition["and_keywords"]):
             continue
 
-        return condition["name"], condition["menu"]  # 모든 조건을 만족하면 해당 메뉴 반환
+        # 모든 조건을 만족하면 VAN 여부 확인
+        menu = condition["menu"]
+
+        # 특정 조건에 대해 VAN IP 체크 수행
+        van_check_conditions = ["내부 도메인 관련 작업", "도메인 관련 작업", "Loadbalancing 관련 작업"]
+        if condition["name"] in van_check_conditions:
+            # table_data에서 IP 주소 추출
+            ip_addresses = []
+            if content.get('table_data'):
+                for row in content['table_data']:
+                    for key, value in row.items():
+                        # IP 관련 필드에서 IP 주소 추출
+                        if 'ip' in key.lower() and value and value.strip():
+                            ip_addresses.append(value.strip())
+
+            # 추출된 IP 주소들이 VAN IP인지 확인
+            if ip_addresses:
+                # 망에 따라 적절한 DB IP 선택
+                hostname = socket.gethostname()
+                if hostname.find('UPMU') > -1 or hostname.find('업무') > -1 or hostname.find('NW229') > -1:
+                    nms_db_ip = NMS_API.db_ip_upmu
+                else:
+                    # 중요망 또는 기타
+                    nms_db_ip = NMS_API.db_ip_jungyo
+
+                # 각 IP에 대해 VAN 여부 확인
+                for ip in ip_addresses:
+                    try:
+                        if NMS_API.check_ip_is_van(nms_db_ip, NMS_API.mysql_port, ip, isLogging=True):
+                            # VAN IP가 발견되면 menu를 ["변경", "수익사업"]으로 변경
+                            menu = ["변경", "수익사업"]
+                            # 로그는 NMS_API.check_ip_is_van에서 기록됨
+                            break
+                    except Exception as e:
+                        # 에러는 NMS_API.check_ip_is_van에서 기록됨
+                        continue
+
+        return condition["name"], menu  # 모든 조건을 만족하면 해당 메뉴 반환
 
     return None, None  # 어떤 조건도 만족하지 않는 경우
 
