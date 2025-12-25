@@ -1243,6 +1243,52 @@ def get_nms_syslog(nmsDB_ip, nmsDB_noSQL_port, deviceID, startDate, endDate, ret
     return sysList
 
 
+def check_ip_is_van(nmsDB_ip, nmsDB_port, ip_address, isLogging=False):
+    '''
+    NMS DB에서 IP 주소의 memo 필드에 'van'이 포함되어 있는지 확인하는 함수
+    nmsDB_ip = nms db서버 ip
+    nmsDB_port = nms rdb 포트번호
+    ip_address = 확인할 IP 주소
+    isLogging = 오류에 대한 로깅 기록 여부
+
+    Returns:
+        True: memo에 'van'이 포함되어 있음
+        False: memo에 'van'이 포함되어 있지 않거나 IP를 찾을 수 없음
+    '''
+    global userName, password
+
+    if not ip_address or not ip_address.strip():
+        return False
+
+    query = f"""
+        SELECT memo
+        FROM kftc_nms_ip
+        WHERE ipaddress = '{ip_address.strip()}'
+        LIMIT 1
+    """
+
+    try:
+        result = DB_Query(nmsDB_ip, nmsDB_port, 'watchall', query, raw_data=True, isLogging=isLogging)
+
+        if not result:
+            return False
+
+        # memo 필드 확인
+        memo = result[0].get('memo', '')
+        if memo and 'van' in memo.lower():
+            if isLogging:
+                writelog(f'[check_ip_is_van] IP {ip_address}는 VAN 관련 IP입니다. (memo: {memo})')
+            return True
+
+        return False
+
+    except Exception as e:
+        msg = f'[check_ip_is_van] : {traceback.format_exc()}'
+        if isLogging:
+            writelog(msg)
+        return False
+
+
 def nms_login(s, ip, id, pwd, isLogging=False):
     '''
     NMS 홈페이지에 로그인 하는 함수

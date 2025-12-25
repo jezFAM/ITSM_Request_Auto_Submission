@@ -41,6 +41,9 @@ from ast import literal_eval
 from bs4 import BeautifulSoup as bs
 from urllib import parse
 
+# NMS API import for VAN IP checking
+import NMS_API
+
 # 한글깨짐 처리
 os.putenv('NLS_LANG', 'KOREAN_KOREA.KO16KSC5601')
 
@@ -473,6 +476,14 @@ class SiteInfo:
 
 
 @dataclass(unsafe_hash=True, order=True)
+class NmsInfo:
+    ip: str = None
+    port: int = 53306
+    user: str = None
+    password: str = None
+
+
+@dataclass(unsafe_hash=True, order=True)
 class DataInfo:
     interval: int = 0
     failClassifcation: List[int] = field(default_factory=list)
@@ -506,7 +517,7 @@ async def getConfig():
     global scriptInfo, configInfo
     global dataInfo, network_prov_file, network_calendar_file
     global prov_info_file, classification_conditions_file, rest_info_file
-    global sftpInfo, itsmInfo
+    global sftpInfo, itsmInfo, nmsInfo
 
     # 현재 망 선택
     hostname = socket.gethostname()
@@ -534,9 +545,11 @@ async def getConfig():
     if (sel == 1):
         # 업무망
         sftpInfo.host_ip = configInfo.config['SERVER']['host_upmu']
+        nmsInfo.ip = NMS_API.db_ip_upmu
     elif (sel == 2):
         # 중요망
         sftpInfo.host_ip = configInfo.config['SERVER']['host_jongyo']
+        nmsInfo.ip = NMS_API.db_ip_jungyo
     elif (sel == 3):
         # 인터넷망
         time.sleep(1)
@@ -544,6 +557,7 @@ async def getConfig():
     elif (sel == 4):
         # 파일서버
         sftpInfo.host_ip = configInfo.config['SERVER']['host_jongyo']
+        nmsInfo.ip = NMS_API.db_ip_jungyo
 
     # FILE 정보
     network_prov_file.pickleFile = configInfo.config['FILE']['network_prov_file']
@@ -561,6 +575,11 @@ async def getConfig():
     itsmInfo.domain = configInfo.config['ITSM']['itsmURL']
     itsmInfo.id = configInfo.config['ITSM']['itsmID']
     itsmInfo.password = configInfo.config['ITSM']['itsmPWD']
+
+    # NMS 정보
+    nmsInfo.port = NMS_API.mysql_port
+    nmsInfo.user = NMS_API.userName
+    nmsInfo.password = NMS_API.password
 
     # DATA 정보
     dataInfo.interval = int(configInfo.config['DATA']['interval'])
@@ -953,7 +972,47 @@ def classify_request(content):
     for condition in dataInfo.classification_conditions['conditions']:
         all_key_match = True
         for key in condition.get('keys', []):
-            if key in condition and not any(keyword.lower() in content.get(key, '').lower() for keyword in condition[key]):
+            # iptable_memo는 NMS DB 조회가 필요한 특수 키
+            if key == 'iptable_memo':
+                # table_data에서 IP 주소 추출
+                ip_addresses = []
+                if content.get('table_data'):
+                    for row in content['table_data']:
+                        for field_key, value in row.items():
+                            if 'ip' in field_key.lower() and value and value.strip():
+                                ip_addresses.append(value.strip())
+
+                # IP가 없으면 불일치
+                if not ip_addresses:
+                    all_key_match = False
+                    break
+
+                # 패턴 매칭 확인 (와일드카드 지원)
+                memo_matched = False
+                for ip in ip_addresses:
+                    try:
+                        # NMS DB에서 memo 조회
+                        query = f"SELECT memo FROM kftc_nms_ip WHERE ipaddress = '{ip.strip()}' LIMIT 1"
+                        result = NMS_API.DB_Query(nmsInfo.ip, nmsInfo.port, 'watchall', query, raw_data=True, isLogging=False)
+
+                        if result and result[0].get('memo'):
+                            memo = result[0]['memo']
+                            # 패턴 매칭 (*VAN* 같은 와일드카드 지원)
+                            for pattern in condition[key]:
+                                pattern_regex = pattern.replace('*', '.*')
+                                if re.search(pattern_regex, memo, re.IGNORECASE):
+                                    memo_matched = True
+                                    break
+
+                        if memo_matched:
+                            break
+                    except Exception as e:
+                        continue
+
+                if not memo_matched:
+                    all_key_match = False
+                    break
+            elif key in condition and not any(keyword.lower() in content.get(key, '').lower() for keyword in condition[key]):
                 all_key_match = False
                 break
         if not all_key_match:
@@ -1000,7 +1059,8 @@ def classify_request(content):
         if "and_keywords" in condition and not all(keyword.lower() in requestTermsStr for keyword in condition["and_keywords"]):
             continue
 
-        return condition["name"], condition["menu"]  # 모든 조건을 만족하면 해당 메뉴 반환
+        # 모든 조건을 만족하면 해당 메뉴 반환
+        return condition["name"], condition["menu"]
 
     return None, None  # 어떤 조건도 만족하지 않는 경우
 
@@ -2209,6 +2269,7 @@ if __name__ == '__main__':
     rest_info_file = ImportFileInfo()
     sftpInfo = ShareInfo()
     itsmInfo = SiteInfo()
+    nmsInfo = NmsInfo()
 
     # 비동기 메인 함수 실행
     asyncio.run(main())
