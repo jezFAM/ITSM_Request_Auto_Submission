@@ -545,11 +545,11 @@ async def getConfig():
     if (sel == 1):
         # 업무망
         sftpInfo.host_ip = configInfo.config['SERVER']['host_upmu']
-        nmsInfo.ip = configInfo.config['NMS']['nms_db_ip_upmu']
+        nmsInfo.ip = NMS_API.db_ip_upmu
     elif (sel == 2):
         # 중요망
         sftpInfo.host_ip = configInfo.config['SERVER']['host_jongyo']
-        nmsInfo.ip = configInfo.config['NMS']['nms_db_ip_jungyo']
+        nmsInfo.ip = NMS_API.db_ip_jungyo
     elif (sel == 3):
         # 인터넷망
         time.sleep(1)
@@ -557,7 +557,7 @@ async def getConfig():
     elif (sel == 4):
         # 파일서버
         sftpInfo.host_ip = configInfo.config['SERVER']['host_jongyo']
-        nmsInfo.ip = configInfo.config['NMS']['nms_db_ip_jungyo']
+        nmsInfo.ip = NMS_API.db_ip_jungyo
 
     # FILE 정보
     network_prov_file.pickleFile = configInfo.config['FILE']['network_prov_file']
