@@ -1,0 +1,107 @@
+{
+  "conditions": [
+    {
+      "name": "LAN 사용",
+      "keys": ["title"],
+      "title": ["LAN이용"],
+      "menu": ["일반", "LAN"]
+    },
+    {
+      "name": "내부 도메인 관련 작업",
+      "keys": ["title"],
+      "table_keys": ["도메인명"],
+      "title": ["도메인등록", "도메인삭제"],
+      "도메인명": ["kftc.net"],
+      "menu": ["변경", "LAN"]
+    },
+    {
+      "name": "도메인 관련 작업",
+      "keys": ["title"],
+      "title": ["도메인등록", "도메인삭제"],
+      "menu": ["변경", "인터넷"]
+    },
+    {
+      "name": "Loadbalancing 관련 작업",
+      "keys": ["title"],
+      "title": ["Load balancing", "Loadbalancing", "부하분산"],
+      "menu": ["변경", "인터넷"]
+    },
+    {
+      "name": "개발용 인터넷 PC 차단된 사이트 해제 요청",
+      "keys": ["title"],
+      "title": ["개발용 인터넷 PC 차단된 사이트"],
+      "menu": ["일반", "방화벽"]
+    },
+    {
+      "name": "기타 정보보호신청 및 미사용 IP주소반납 신청",
+      "keys": ["title"],
+      "title": ["정보보호신청", "미사용 IP주소반납"],
+      "menu": ["일반", "방화벽"]
+    },
+    {
+      "name": "사용자 또는 업무서버망 LAN 환경 설정",
+      "keys": ["title"],
+      "table_keys": ["Real IP"],
+      "title": ["LAN환경설정"],
+      "Real IP": [
+        "10.220.0.0/16",
+        "10.51.0.0/16",
+        "10.229.0.0/16",
+        "10.98.0.0/16",
+        "10.231.0.0/16",
+        "10.100.0.0/16"
+      ],
+      "menu": ["변경", "LAN"]
+    },
+    {
+      "name": "LAN 환경 설정",
+      "keys": ["title"],
+      "title": ["LAN환경설정"],
+      "menu": ["변경", "인터넷"]
+    },
+    {
+      "name": "수익사업 업무 인터넷VPN접속 작업요청",
+      "keys": ["title", "relname"],
+      "title": ["인터넷VPN접속 작업요청"],
+      "relname": ["신용", "승인", "CMS", "VAN"],
+      "menu": ["변경", "수익사업"]
+    },
+    {
+      "name": "대외기관 인터넷VPN접속 작업요청",
+      "keys": ["title"],
+      "title": ["인터넷VPN접속 작업요청"],
+      "menu": ["변경", "대외기관"]
+    },
+    {
+      "name": "수익사업 업무 전용회선 작업 요청",
+      "keys": ["title", "relname"],
+      "title": ["전용회선 작업요청"],
+      "relname": ["신용", "승인", "CMS", "VAN"],
+      "menu": ["변경", "수익사업"]
+    },
+    {
+      "name": "대외기관 전용회선 작업 요청",
+      "keys": ["title"],
+      "title": ["전용회선 작업요청"],
+      "menu": ["변경", "대외기관"]
+    },
+    {
+      "name": "X.25와 PVC 사용",
+      "keys": ["include_keywords"],
+      "include_keywords": ["X.25", "PVC"],
+      "menu": ["변경", "수익사업"]
+    },
+    {
+      "name": "데이탑과 VPN 사용",
+      "keys": ["include_keywords"],
+      "include_keywords": ["데이탑", "VPN"],
+      "menu": ["변경", "인터넷"]
+    },
+    {
+      "name": "인증공동망 관련 요청",
+      "keys": ["include_keywords"],
+      "include_keywords": ["인증공동망"],
+      "menu": ["변경", "참가기관"]
+    }
+  ]
+}
