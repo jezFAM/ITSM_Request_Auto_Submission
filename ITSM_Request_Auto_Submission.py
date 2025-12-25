@@ -993,7 +993,8 @@ def classify_request(content):
                     try:
                         # NMS DB에서 memo 조회
                         query = f"SELECT memo FROM kftc_nms_ip WHERE ipaddress = '{ip.strip()}' LIMIT 1"
-                        result = NMS_API.DB_Query(nmsInfo.ip, nmsInfo.port, 'watchall', query, raw_data=True, isLogging=False)
+                        result = NMS_API.DB_Query(
+                            nmsInfo.ip, nmsInfo.port, 'watchall', query, raw_data=True, isLogging=False)
 
                         if result and result[0].get('memo'):
                             memo = result[0]['memo']
@@ -1027,7 +1028,7 @@ def classify_request(content):
             if 'ip' not in table_key.lower():
                 # 비교할 데이터가 IP가 아니면 포함여부 확인
                 for row in content['table_data']:
-                    if table_key not in row:
+                    if table_key not in row or next(iter(row.values())) == '네트워크팀':
                         continue
                     if table_key in condition and not any(keyword.lower() in row.get(table_key, '').lower() for keyword in condition[table_key]):
                         all_table_key_match = False
@@ -2041,7 +2042,8 @@ async def get_browser_path():
 
     try:
         # ini 파일에서 브라우저 타입 읽기
-        browser_type = configInfo.config.get('BROWSER', 'browser_type', fallback=None)
+        browser_type = configInfo.config.get(
+            'BROWSER', 'browser_type', fallback=None)
 
         if not browser_type:
             msg = (
@@ -2076,7 +2078,8 @@ async def get_browser_path():
         # 모든 경로에서 찾지 못한 경우
         msg = (
             f"{browser_type} 브라우저를 기본 설치 경로에서 찾을 수 없습니다.\n"
-            f"확인한 경로:\n" + "\n".join(f"  - {p}" for p in browser_paths[browser_type]) + "\n"
+            f"확인한 경로:\n" +
+            "\n".join(f"  - {p}" for p in browser_paths[browser_type]) + "\n"
             f"브라우저를 설치하거나 ini 파일의 browser_type 설정을 변경하세요."
         )
         print(msg)
